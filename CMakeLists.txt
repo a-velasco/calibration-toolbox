@@ -9,6 +9,6 @@ file(GLOB SOURCES "*.cpp")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(undistortion ${SOURCES})
+add_executable(undistortion  ${SOURCES})
 
-target_link_libraries(undistortion ${OpenCV_LIBS})
+target_link_libraries(undistortion  ${OpenCV_LIBS})

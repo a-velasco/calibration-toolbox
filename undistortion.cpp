@@ -41,7 +41,7 @@ void getCalibrationInfo(CameraType type, std::vector<float> &cameraMatrixData, s
     }
 }
 
-int main(int argc, char **argv)
+int stuff() //int main(int argc, char **argv)
 {
     // Configuration
     std::string folderPath = "/home/avelasco/CalibFiles/calibrationMDC3_120/";
@@ -86,4 +86,5 @@ int main(int argc, char **argv)
     cv::imwrite(folderPath + imagePath + "-undistorted.jpg", outputImage);
 
     cv::waitKey(0);
+    return 0;
 }

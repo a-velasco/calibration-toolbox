@@ -1,110 +1,235 @@
-// #include <iostream>
-// #include <opencv2/calib3d.hpp>
-// #include <opencv2/core.hpp>
-// #include <opencv2/highgui.hpp>
-// #include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <stdio.h>
+#include <iostream>
 
-// int main(int argc, char **argv)
-// {
-//     (void)argc;
-//     (void)argv;
+void getCalibrationData2(std::vector<std::vector<cv::Point3f>> &objpoints, //
+                         std::vector<std::vector<cv::Point2f>> &imgpoints, //
+                         cv::Size graySize,                                //
+                         std::vector<std::string> &sources)
+{
+    // Defining the dimensions of checkerboard
+    int CHECKERBOARD[2]{6, 9};
 
-//     std::vector<cv::String> fileNames;
-//     cv::glob("C:/Users/avgom/OneDrive/Documents/Fernride/CalibFiles/calibrationMDC3_120/left-*.jpg", fileNames, false);
-//     if (fileNames.size() == 0)
-//     {
-//         std::cout << "No img files found" << std::endl;
-//         return 1;
-//     }
-//     int checkerboardSizeX = 9;
-//     int checkerboardSizeY = 6;
-//     cv::Size patternSize(checkerboardSizeX - 1, checkerboardSizeY - 1);
-//     std::vector<std::vector<cv::Point2f>> q(fileNames.size());
+    // Defining the world coordinates for 3D points
+    std::vector<cv::Point3f> objp;
+    for (int i{0}; i < CHECKERBOARD[1]; i++)
+    {
+        for (int j{0}; j < CHECKERBOARD[0]; j++)
+            objp.push_back(cv::Point3f(j, i, 0));
+    }
 
-//     std::vector<std::vector<cv::Point3f>> Q;
-//     // 1. Generate checkerboard (world) coordinates Q. The board has 25 x 18
-//     // fields with a size of 15x15mm
+    // Extracting path of individual image stored in a given directory
+    std::vector<cv::String> images;
+    // Path of the folder containing checkerboard images
+    std::string path = "/home/avelasco/CalibFiles/calibrationMDC3_120/*.jpg";
 
-//     int checkerBoard[2] = {checkerboardSizeX, checkerboardSizeY};
-//     // Defining the world coordinates for 3D points
-//     std::vector<cv::Point3f> objp;
-//     for (int i = 1; i < checkerBoard[1]; i++)
-//     {
-//         for (int j = 1; j < checkerBoard[0]; j++)
-//         {
-//             objp.push_back(cv::Point3f(j, i, 0));
-//         }
-//     }
+    cv::glob(path, images);
 
-//     std::vector<cv::Point2f> imgPoint;
-//     // Detect feature points
-//     std::size_t i = 0;
-//     for (auto const &f : fileNames)
-//     {
-//         std::cout << std::string(f) << std::endl;
+    cv::Mat frame, gray;
+    // vector to store the pixel coordinates of detected checker board corners
+    std::vector<cv::Point2f> corner_pts;
+    bool success;
 
-//         // 2. Read in the image an call cv::findChessboardCorners()
-//         cv::Mat img = cv::imread(fileNames[i]);
-//         cv::Mat gray;
+    // Looping over all the images in the directory
+    for (int i{0}; i < images.size(); i++)
+    {
+        sources.push_back(images[i]);
 
-//         cv::cvtColor(img, gray, cv::COLOR_RGB2GRAY);
+        frame = cv::imread(images[i]);
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+        if (graySize.area() == 0)
+        {
+            graySize = gray.size();
+        }
+        else if (gray.size() != graySize)
+        {
+            std::cout << "Invalid image size: " << images[i] << " - expect " << graySize << ", but " << gray.size() << std::endl;
+            continue;
+        }
 
-//         bool patternFound = cv::findChessboardCorners(gray, patternSize, q[i], cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE + cv::CALIB_CB_FAST_CHECK);
+        // Finding checker board corners
+        // If desired number of corners are found in the image then success = true
+        success = cv::findChessboardCorners(gray, cv::Size(CHECKERBOARD[0], CHECKERBOARD[1]), corner_pts, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_FAST_CHECK | cv::CALIB_CB_NORMALIZE_IMAGE);
 
-//         // 2. Use cv::cornerSubPix() to refine the found corner detections
-//         if (patternFound)
-//         {
-//             cv::cornerSubPix(gray, q[i], cv::Size(11, 11), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.1));
-//             Q.push_back(objp);
-//         }
+        /*
+        * If desired number of corner are detected,
+        * we refine the pixel coordinates and display
+        * them on the images of checker board
+        */
 
-//         // Display
-//         cv::drawChessboardCorners(img, patternSize, q[i], patternFound);
-//         cv::imshow("chessboard detection", img);
-//         cv::waitKey(0);
+        if (success)
+        {
+            cv::TermCriteria criteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.001);
 
-//         i++;
-//     }
+            // refining pixel coordinates for given 2d points.
+            cv::cornerSubPix(gray, corner_pts, cv::Size(11, 11), cv::Size(-1, -1), criteria);
 
-//     cv::Matx33f K(cv::Matx33f::eye());  // intrinsic camera matrix
-//     cv::Vec<float, 5> k(0, 0, 0, 0, 0); // distortion coefficients
+            // Displaying the detected corner points on the checker board
+            cv::drawChessboardCorners(frame, cv::Size(CHECKERBOARD[0], CHECKERBOARD[1]), corner_pts, success);
 
-//     std::vector<cv::Mat> rvecs, tvecs;
-//     std::vector<double> stdIntrinsics, stdExtrinsics, perViewErrors;
-//     int flags = cv::CALIB_FIX_ASPECT_RATIO + cv::CALIB_FIX_K3 +
-//                 cv::CALIB_ZERO_TANGENT_DIST + cv::CALIB_FIX_PRINCIPAL_POINT;
-//     cv::Size frameSize(1280, 960);
+            objpoints.push_back(objp);
+            imgpoints.push_back(corner_pts);
+        }
 
-//     std::cout << "Calibrating..." << std::endl;
-//     // 4. Call "float error = cv::calibrateCamera()" with the input coordinates
-//     // and output parameters as declared above...
+        cv::imshow("Image", frame);
+        cv::waitKey(0);
+    }
 
-//     float error = cv::calibrateCamera(Q, q, frameSize, K, k, rvecs, tvecs, flags);
+    cv::destroyAllWindows();
+}
 
-//     std::cout << "Reprojection error = " << error << "\nK =\n"
-//               << K << "\nk=\n"
-//               << k << std::endl;
+void getCalibrationData(std::vector<std::vector<cv::Point3f>> &objpoints, //
+                        std::vector<std::vector<cv::Point2f>> &imgpoints, //
+                        cv::Size graySize,                                //
+                        std::vector<std::string> &sources)
+{
+    int W = 9;
+    int H = 6;
+    std::vector<std::string> fileNames = {"/home/avelasco/CalibFiles/calibrationMDC3_120/left-0000.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0001.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0002.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0003.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0004.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0005.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0006.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0007.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0008.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0009.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0010.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0011.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0012.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0013.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0014.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0015.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0016.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0017.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0018.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0019.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0020.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0021.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0022.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0023.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0024.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0025.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0026.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0027.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0028.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0029.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0030.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0031.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0032.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0033.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0034.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0035.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0036.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0037.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0038.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0039.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0040.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0041.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0042.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0043.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0044.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0045.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0046.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0047.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0048.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0049.jpg",
+                                          "/home/avelasco/CalibFiles/calibrationMDC3_120/left-0050.jpg"};
+    const cv::Size checkerBoard(W, H);
+    std::vector<cv::Point3f> objp;
 
-//     // Precompute lens correction interpolation
-//     cv::Mat mapX, mapY;
-//     cv::initUndistortRectifyMap(K, k, cv::Matx33f::eye(), K, frameSize, CV_32FC1,
-//                                 mapX, mapY);
+    for (int v = 0; v < checkerBoard.height; ++v)
+    {
+        for (int u = 0; u < checkerBoard.width; ++u)
+        {
+            objp.push_back(cv::Point3f(float(u), float(v), 0));
+        }
+    }
+    for (int i = 0; i < fileNames.size(); ++i)
+    {
+        std::string fileName = fileNames[i];
+        if (fileName.begin()[0] == '-')
+            continue;
+        std::cout << "Processing " << fileName << "..." << std::endl;
+        cv::Mat source = cv::imread(fileName);
+        if (source.empty())
+        {
+            std::cout << "Failed to imread(" << fileName << ")." << std::endl;
+            continue;
+        }
+        cv::Mat gray;
+        cv::cvtColor(source, gray, cv::COLOR_RGB2GRAY);
+        if (graySize.area() == 0)
+        {
+            graySize = gray.size();
+        }
+        else if (gray.size() != graySize)
+        {
+            std::cout << "Invalid image size: " << fileName << " - expect " << graySize << ", but " << gray.size() << std::endl;
+            continue;
+        }
+        sources.push_back(fileName);
+        std::vector<cv::Point2f> corners;
+        int flags = cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE;
+        if (!cv::findChessboardCorners(source, checkerBoard, corners, flags))
+        {
+            std::cout << "Failed to findChessboardCorners(" << fileName << ")." << std::endl;
+            continue;
+        }
+        objpoints.push_back(objp);
+        cv::TermCriteria criteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.1);
+        cv::cornerSubPix(source, corners, cv::Size(3, 3), cv::Size(-1, -1), criteria);
+        imgpoints.push_back(corners);
+    }
+}
 
-//     // Show lens corrected images
-//     for (auto const &f : fileNames)
-//     {
-//         std::cout << std::string(f) << std::endl;
+int main(int argc, char *argv[])
+{
+    std::vector<std::vector<cv::Point3f>> objpoints;
+    std::vector<std::vector<cv::Point2f>> imgpoints;
+    cv::Size graySize;
+    std::vector<std::string> sources;
 
-//         cv::Mat img = cv::imread(f, cv::IMREAD_COLOR);
+    std::cout << "Finding chessboard corners ..." << std::endl;
+    getCalibrationData2(objpoints, imgpoints, graySize, sources);
 
-//         cv::Mat imgUndistorted;
-//         // 5. Remap the image using the precomputed interpolation maps.
-//         cv::remap(img, imgUndistorted, mapX, mapY, cv::INTER_LINEAR);
+    if (objpoints.empty() || imgpoints.empty())
+    {
+        std::cout << "No corners found" << std::endl;
+        return 1;
+    }
 
-//         // Display
-//         cv::imshow("undistorted image", imgUndistorted);
-//         cv::waitKey(0);
-//     }
+    std::cout
+        << "Processing cv::fisheye::calibrate() ..." << std::endl;
+    cv::Mat K, D;
+    std::vector<cv::Mat> rvecs, tvecs;
+    int flags = cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC | cv::fisheye::CALIB_FIX_SKEW;
+    cv::TermCriteria criteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 1e-6);
+    cv::fisheye::calibrate(objpoints, imgpoints, graySize, K, D, rvecs, tvecs, flags, criteria);
 
-//     return 0;
-// }
+    std::cout
+        << "K=" << K << std::endl
+        << "D=" << D << std::endl;
+
+    cv::Mat map1, map2;
+    cv::fisheye::initUndistortRectifyMap(K, D, cv::Mat::eye(3, 3, CV_32F), K, graySize, CV_16SC2, map1, map2);
+
+    for (auto fileName : sources)
+    {
+        cv::Mat source = cv::imread(fileName);
+        cv::Mat undistort;
+        cv::remap(source, undistort, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+
+        cv::Mat result;
+        cv::hconcat(source, undistort, result);
+        cv::resize(result, result, cv::Size(), 0.25, 0.25);
+        cv::imshow("result", result);
+        cv::waitKey();
+    }
+
+    return 0;
+}
