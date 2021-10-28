@@ -3,12 +3,11 @@ project(undistortion)
 
 # include_directories("external")
 
-file(GLOB SOURCES "*.cpp")
+file(GLOB SOURCES "*.cpp" "*.h")
 
-# set(OpenCV_DIR "E:/Programs/programming/opencv/build2")
 find_package(OpenCV REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_executable(undistortion  ${SOURCES})
+target_include_directories(undistortion PRIVATE ${OpenCV_INCLUDE_DIRS})
 
 target_link_libraries(undistortion  ${OpenCV_LIBS})
