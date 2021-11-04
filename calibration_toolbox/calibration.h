@@ -22,18 +22,26 @@ public:
     std::vector<float> &getCameraMatrix() { return _cameraMatrix; }
     std::vector<float> &getDistortionCoefficients() { return _distortionCoefficients; }
 
-    /// Gets cameraMatrix and distortionCoefficients for _cameraType based on previously done
-    /// OpenCV calibration.
+    cv::Mat &getCameraMatrixCvMat() { return _cameraMatrixCvMat; }
+    cv::Mat &getDistortionCoefficientsCvMat() { return _distortionCoefficientsCvMat; }
+
+    /// Gets cameraMatrix and distortionCoefficients for _cameraType based on an existing OpenCV calibration.
     void getExistingCalibration();
 
-    // TODO: Implement cv::calibrate and cv::fisheye::calibrate for given set of chessboard images.
-    // void calibrate();
+    /// Detects corners and finds camera matrix + distortion coeffs for set of chessboard images in _inputImagesPath.
+    void calibrate();
 
 private:
     std::vector<float> _cameraMatrix{};
     std::vector<float> _distortionCoefficients{};
 
+    cv::Mat _cameraMatrixCvMat{};
+    cv::Mat _distortionCoefficientsCvMat{};
+
     CameraType _cameraType{CameraType::MDC3_60};
 
     std::string _inputImagesPath{}; /// Path to set of chessboard images
+
+    const int _chessboardW{5};
+    const int _chessboardH{8};
 };
