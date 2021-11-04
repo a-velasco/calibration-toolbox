@@ -22,7 +22,8 @@ public:
     std::vector<float> &getCameraMatrix() { return _cameraMatrix; }
     std::vector<float> &getDistortionCoefficients() { return _distortionCoefficients; }
 
-    /// Gets cameraMatrix and distortionCoefficients for _cameraType.
+    /// Gets cameraMatrix and distortionCoefficients for _cameraType based on previously done
+    /// OpenCV calibration.
     void getExistingCalibration();
 
     // TODO: Implement cv::calibrate and cv::fisheye::calibrate for given set of chessboard images.

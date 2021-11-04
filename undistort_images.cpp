@@ -41,13 +41,11 @@ const std::string checkPath(std::string path)
     return path.back() == '/' ? path : path + '/';
 }
 
-// .undistort_images --inputDir --outputDir --cameraType
 int main(int argc, char **argv)
 {
     InputParser input(argc, argv);
 
     auto cameraTypeArg = input.getArgument("--cameraType");
-    std::cout << "cameraTypeArg: " << cameraTypeArg << std::endl;
 
     Undistortion undistortion;
     if (cameraTypeArg == "mdc3_60")
@@ -72,38 +70,27 @@ int main(int argc, char **argv)
     Calibration calibration;
     calibration.setCameraType(undistortion.getCameraType());
     calibration.getExistingCalibration();
+
     undistortion.setCameraMatrix(calibration.getCameraMatrix());
     undistortion.setDistortionCoefficients(calibration.getDistortionCoefficients());
 
     auto inputPath = checkPath(input.getArgument("--inputDir"));
-    std::cout << "inputPath: " << inputPath << std::endl;
-
     auto outputPath = checkPath(input.getArgument("--outputDir"));
-    std::cout << "outputPath: " << outputPath << std::endl;
 
     std::vector<std::string> inputImages;
     cv::glob(inputPath + "*.jpg", inputImages, false);
 
     std::string outputImage = "";
-    if (undistortion.getCameraType() != Calibration::CameraType::MDC3_120)
-    {
-        for (const auto &inputImage : inputImages)
-        {
-            // Parse out image name to construct outputImage path
-            std::string imgName = inputImage.substr(inputImage.find_last_of("/") + 1);
-            outputImage = outputPath + imgName;
 
-            std::cout << "inputImage: " << inputImage << std::endl;
-            std::cout << "outputImage: " << outputImage << std::endl;
-
-            undistortion.setInputImagePath(inputImage);
-            undistortion.setOutputImagePath(outputImage);
-            undistortion.undistort();
-        }
-    }
-    else
+    for (const auto &inputImage : inputImages)
     {
-        // Undistort fisheye
+        // Parse out image name to construct outputImage path
+        std::string imgName = inputImage.substr(inputImage.find_last_of("/") + 1);
+        outputImage = outputPath + imgName;
+
+        undistortion.setInputImagePath(inputImage);
+        undistortion.setOutputImagePath(outputImage);
+        undistortion.undistort();
     }
 
     return 0;
