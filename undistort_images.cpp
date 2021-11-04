@@ -45,6 +45,12 @@ namespace
 
 int main(int argc, char **argv)
 {
+    if (argc < 6)
+    {
+        printUsage(argv[0]);
+        return 1;
+    }
+
     // Handle cli inputs
     InputParser input(argc, argv);
     auto inputPath = checkPath(input.getArgument("--inputDir"));
@@ -67,8 +73,8 @@ int main(int argc, char **argv)
     calibration.setCameraType(cameraType);
     calibration.getExistingCalibration();
 
-    undistortion.setCameraMatrix(calibration.getCameraMatrix());
-    undistortion.setDistortionCoefficients(calibration.getDistortionCoefficients());
+    undistortion.setCameraMatrixCvMat(calibration.getCameraMatrixCvMat());
+    undistortion.setDistortionCoefficientsCvMat(calibration.getDistortionCoefficientsCvMat());
 
     std::vector<std::string> inputImages;
     cv::glob(inputPath + "*.jpg", inputImages, false);

@@ -6,11 +6,6 @@
 #include <opencv2/core/mat.hpp>
 #include <iostream>
 
-Undistortion::Undistortion(std::vector<float> &cameraMatrix,
-                           std::vector<float> &distortionCoefficients) noexcept : _cameraMatrix(cameraMatrix), _distortionCoefficients(distortionCoefficients)
-{
-}
-
 void Undistortion::undistort()
 {
     if (_inputImagePath.empty())
@@ -51,11 +46,10 @@ void Undistortion::undistort()
         // Equivalent to cv::undistort() - just more control over parameters.
         cv::Mat newCameraMatrix = cv::getOptimalNewCameraMatrix(_cameraMatrixCvMat, _distortionCoefficientsCvMat, imageSize, 1, imageSize, 0);
 
-        cv::Mat map1, map2;
-        cv::initUndistortRectifyMap(_cameraMatrixCvMat, _distortionCoefficientsCvMat, cv::Mat(), newCameraMatrix, imageSize, CV_16SC2, map1, map2);
+        cv::initUndistortRectifyMap(_cameraMatrixCvMat, _distortionCoefficientsCvMat, cv::Mat(), newCameraMatrix, imageSize, CV_16SC2, _map1, _map2);
 
         cv::Mat outputImage;
-        cv::remap(inputImage, outputImage, map1, map2, cv::INTER_LINEAR);
+        cv::remap(inputImage, outputImage, _map1, _map2, cv::INTER_LINEAR);
 
         std::cout << "Writing undistorted image to " << _outputImagePath << std::endl;
         cv::imwrite(_outputImagePath, outputImage);
@@ -68,15 +62,14 @@ void Undistortion::undistort()
                                                                 _distortionCoefficientsCvMat,
                                                                 imageSize,
                                                                 cv::Mat::eye(3, 3, CV_32F),
-                                                                newCameraMatrix, 
+                                                                newCameraMatrix,
                                                                 balance);
 
-        cv::Mat map1, map2;
         cv::fisheye::initUndistortRectifyMap(_cameraMatrixCvMat, _distortionCoefficientsCvMat,
-                                             cv::Mat::eye(3, 3, CV_32F), newCameraMatrix, imageSize, CV_16SC2, map1, map2);
+                                             cv::Mat::eye(3, 3, CV_32F), newCameraMatrix, imageSize, CV_16SC2, _map1, _map2);
 
         cv::Mat outputImage;
-        cv::remap(inputImage, outputImage, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        cv::remap(inputImage, outputImage, _map1, _map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
         std::cout << "Writing undistorted image to " << _outputImagePath << std::endl;
         cv::imwrite(_outputImagePath, outputImage);

@@ -19,11 +19,11 @@ public:
     void setCameraType(CameraType type) { _cameraType = type; }
     CameraType getCameraType() { return _cameraType; }
 
-    std::vector<float> &getCameraMatrix() { return _cameraMatrix; }
-    std::vector<float> &getDistortionCoefficients() { return _distortionCoefficients; }
-
     cv::Mat &getCameraMatrixCvMat() { return _cameraMatrixCvMat; }
     cv::Mat &getDistortionCoefficientsCvMat() { return _distortionCoefficientsCvMat; }
+
+    void setChessboardW(int w) { _chessboardW = w; }
+    void setChessboardH(int h) { _chessboardH = h; }
 
     /// Gets cameraMatrix and distortionCoefficients for _cameraType based on an existing OpenCV calibration.
     void getExistingCalibration();
@@ -32,9 +32,6 @@ public:
     void calibrate();
 
 private:
-    std::vector<float> _cameraMatrix{};
-    std::vector<float> _distortionCoefficients{};
-
     cv::Mat _cameraMatrixCvMat{};
     cv::Mat _distortionCoefficientsCvMat{};
 
@@ -42,6 +39,6 @@ private:
 
     std::string _inputImagesPath{}; /// Path to set of chessboard images
 
-    const int _chessboardW{5};
-    const int _chessboardH{8};
+    int _chessboardW{5};
+    int _chessboardH{8};
 };
