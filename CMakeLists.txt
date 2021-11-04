@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.10.2)
 project(calibration_toolbox)
 
-# include_directories("external")
-
 find_package(OpenCV REQUIRED)
 
 set(SOURCES 
@@ -10,7 +8,9 @@ set(SOURCES
     calibration_toolbox/calibration.h
 
     calibration_toolbox/undistortion.cpp
-    calibration_toolbox/undistortion.h)
+    calibration_toolbox/undistortion.h
+    
+    utils/input_parser.hpp)
 
 add_executable(undistort_images  ${SOURCES} undistort_images.cpp)
 add_executable(generate_calibration  ${SOURCES} generate_calibration.cpp)

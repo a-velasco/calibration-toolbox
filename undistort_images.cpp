@@ -1,81 +1,74 @@
 #include "calibration_toolbox/undistortion.h"
 #include "calibration_toolbox/calibration.h"
+#include "utils/input_parser.hpp"
 
 #include <iostream>
 
-class InputParser
+namespace
 {
-public:
-    InputParser(int &argc, char **argv)
+    void printUsage(char *exe)
     {
-        for (int i = 1; i < argc; ++i)
-            this->tokens.push_back(std::string(argv[i]));
+        std::cerr << "Usage: " << exe << "\n"
+                  << "--inputDir   : directory containing .jpg images to undistort\n"
+                  << "--outputDir  : directory to write undistorted images\n"
+                  << "--cameraType : 'mdc3_60', 'pylon', or 'mdc3_120'\n";
     }
 
-    const std::string &getArgument(const std::string &option) const
+    const std::string checkPath(std::string path)
     {
-        std::vector<std::string>::const_iterator it;
-        it = std::find(this->tokens.begin(), this->tokens.end(), option);
-        if (it != this->tokens.end() && ++it != this->tokens.end())
+        return path.back() == '/' ? path : path + '/';
+    }
+
+    bool parseCameraType(const std::string &cameraTypeArg, Calibration::CameraType &cameraType)
+    {
+        if (cameraTypeArg == "mdc3_60")
         {
-            return *it;
+            cameraType = Calibration::CameraType::MDC3_60;
+            return true;
         }
-        static const std::string emptyString("");
-        return emptyString;
+        else if (cameraTypeArg == "mdc3_120")
+        {
+            cameraType = Calibration::CameraType::MDC3_120;
+            return true;
+        }
+        else if (cameraTypeArg == "pylon")
+        {
+            cameraType = Calibration::CameraType::KOWA_6MM;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
-
-private:
-    std::vector<std::string> tokens;
-};
-
-void printUsage(char *exe)
-{
-    std::cerr << "Usage: " << exe << "\n"
-              << "--inputDir   : directory containing .jpg images to undistort\n"
-              << "--outputDir  : directory to write undistorted images\n"
-              << "--cameraType : 'mdc3_60', 'pylon', or 'mdc3_120'\n";
-}
-
-const std::string checkPath(std::string path)
-{
-    return path.back() == '/' ? path : path + '/';
 }
 
 int main(int argc, char **argv)
 {
+    // Handle cli inputs
     InputParser input(argc, argv);
+    auto inputPath = checkPath(input.getArgument("--inputDir"));
+    auto outputPath = checkPath(input.getArgument("--outputDir"));
+    std::string cameraTypeArg = input.getArgument("--cameraType");
 
-    auto cameraTypeArg = input.getArgument("--cameraType");
-
-    Undistortion undistortion;
-    if (cameraTypeArg == "mdc3_60")
-    {
-        undistortion.setCameraType(Calibration::CameraType::MDC3_60);
-    }
-    else if (cameraTypeArg == "mdc3_120")
-    {
-        undistortion.setCameraType(Calibration::CameraType::MDC3_120);
-    }
-    else if (cameraTypeArg == "pylon")
-    {
-        undistortion.setCameraType(Calibration::CameraType::KOWA_6MM);
-    }
-    else
+    Calibration::CameraType cameraType;
+    auto result = parseCameraType(cameraTypeArg, cameraType);
+    if (!result)
     {
         std::cout << "Incorrect camera type: " + cameraTypeArg << std::endl;
         printUsage(argv[0]);
-        return 1;
     }
 
+    // Prepare classes
+    Undistortion undistortion;
+    undistortion.setCameraType(cameraType);
+
     Calibration calibration;
-    calibration.setCameraType(undistortion.getCameraType());
+    calibration.setCameraType(cameraType);
     calibration.getExistingCalibration();
 
     undistortion.setCameraMatrix(calibration.getCameraMatrix());
     undistortion.setDistortionCoefficients(calibration.getDistortionCoefficients());
-
-    auto inputPath = checkPath(input.getArgument("--inputDir"));
-    auto outputPath = checkPath(input.getArgument("--outputDir"));
 
     std::vector<std::string> inputImages;
     cv::glob(inputPath + "*.jpg", inputImages, false);
